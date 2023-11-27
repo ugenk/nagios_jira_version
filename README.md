@@ -10,8 +10,7 @@ For now it supports:
 
 Patches/mrs are welcome.
 
-Installation on Debian/Ubuntu
------------------------------
+## Installation on Debian/Ubuntu for Icinga2
 
 ```commandline
 apt -y install python3 python3-requests python3-packaging python3-bs4
@@ -19,7 +18,7 @@ cp check_jira_version.py /usr/lib/nagios/plugins/
 cp check-jira-version-command.conf /etc/icinga2/conf.d/check-jira-command.conf
 ```
 
-Example configuration of icinga
+Example configuration of icinga2
 
 ```
 apply Service "check_jira_version" {
@@ -51,3 +50,26 @@ object Host "sd.example.com" {
   vars.jira_lts = false
 }
 ```
+
+## Observium configuration
+
+Probes support requires paid subscription.
+
+```commandline
+cp check_jira_version.py /usr/lib/nagios/plugins/
+```
+
+add to observium's `config.php`:
+
+```php
+$probe = 'check_jira_version.py';
+$config['probes'][$probe]['enable'] = 1;
+$config['probes'][$probe]['descr']  = 'Check Atlassian products versions';
+$config['probes'][$probe]['args']['default']         = "-H %hostname%";
+```
+
+### Example probe parameters
+* Device: `your jira server`
+* Probe type: `check_jira_version.py`
+* Description: `Jira needs update`
+* Extra arguments: `-S --lts --software jira`
