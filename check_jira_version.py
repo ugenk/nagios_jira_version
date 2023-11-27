@@ -1,4 +1,4 @@
-#!env python3
+#!/usr/bin/env python3
 import requests
 from packaging.version import parse, InvalidVersion
 from bs4 import BeautifulSoup
