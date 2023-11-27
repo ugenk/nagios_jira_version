@@ -14,7 +14,7 @@ Installation on Debian/Ubuntu
 -----------------------------
 
 ```commandline
-apt -y install python3 git python3-requests python3-packaging python3-bs4
+apt -y install python3 python3-requests python3-packaging python3-bs4
 cp check_jira_version.py /usr/lib/nagios/plugins/
 cp check-jira-version-command.conf /etc/icinga2/conf.d/check-jira-command.conf
 ```
