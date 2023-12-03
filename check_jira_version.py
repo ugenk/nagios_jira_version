@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-import requests
-from packaging.version import parse, InvalidVersion
-from bs4 import BeautifulSoup
+"""Script for nagios/icinga/observium that checks atlassian software versions"""
 import argparse
 import json
 import sys
+from bs4 import BeautifulSoup
+from packaging.version import parse, InvalidVersion
+import requests
 
 
 def get_latest_atlassian_version(product_name, is_lts):
@@ -29,7 +30,7 @@ def get_latest_atlassian_version(product_name, is_lts):
         url = urls[product_name]
 
         try:
-            response = requests.get(url)
+            response = requests.get(url, timeout=20)
             response.raise_for_status()
             data = json.loads(response.text[10:-1])  # Parsing the JSON
 
@@ -66,25 +67,26 @@ def check_atlassian_product_version(base_url, product, auth=None):
         api_url = base_url + api_endpoints[product]
 
         try:
-            response = requests.get(api_url, auth=auth)
+            response = requests.get(api_url, auth=auth, timeout=20)
             response.raise_for_status()
 
             if product == 'jira':
                 data = response.json()
                 return data['version']
-            elif product == 'jira-service-desk':
+            if product == 'jira-service-desk':
                 data = response.json()
-                return data['version'].split('-')[0]  # ugly hack against service desk versions like 5.11.3-REL-0001
-            elif product == 'confluence':
+                # ugly hack against service desk versions like 5.11.3-REL-0001
+                return data['version'].split('-')[0]
+            if product == 'confluence':
                 # Parsing HTML to get Confluence version
                 soup = BeautifulSoup(response.text, 'html.parser')
                 version_tag = soup.find('meta', {'name': 'ajs-version-number'})
                 return version_tag.attrs['content'] if version_tag else "Version not found"
 
         except requests.exceptions.RequestException as e:
-            return f"UNKNOWN: Request error - {e}"
+            raise ValueError(f"UNKNOWN: Request error - {e}") from e
     else:
-        return "Unknown product"
+        raise ValueError("Unknown product")
 
 
 def compare_versions(installed_version, latest_version):
@@ -106,23 +108,25 @@ def compare_versions(installed_version, latest_version):
 
     if installed.major < latest.major or installed.minor < latest.minor:
         return 'CRITICAL'
-    elif installed.micro < latest.micro:
+    if installed.micro < latest.micro:
         return 'WARNING'
-    else:
-        return 'OK'
+    return 'OK'
 
 
 def main():
     """
     Main function of the script.
     """
-    parser = argparse.ArgumentParser(description="Atlassian Product Version Checker for Nagios/Icinga")
+    parser = argparse.ArgumentParser(
+        description="Atlassian Product Version Checker for Nagios/Icinga")
     parser.add_argument('-H', '--host', required=True, help='Hostname to check')
-    parser.add_argument('--software', required=True, choices=['jira', 'confluence', 'jira-service-desk'],
+    parser.add_argument('--software', required=True,
+                        choices=['jira', 'confluence', 'jira-service-desk'],
                         help='Type of Atlassian software')
     parser.add_argument('-S', '--ssl', action='store_true', help='Use SSL for connection')
     parser.add_argument('--auth', help='Optional authentication string for Atlassian software')
-    parser.add_argument('--lts', action='store_true', help='Check for LTS version if set, non-LTS otherwise')
+    parser.add_argument('--lts', action='store_true',
+                        help='Check for LTS version if set, non-LTS otherwise')
     args = parser.parse_args()
 
     # Construct the base URL
@@ -141,10 +145,12 @@ def main():
         print(f"OK: Installed version {installed_version} is up-to-date")
         sys.exit(0)
     elif result == 'WARNING':
-        print(f"WARNING: Installed version {installed_version} differs in patch version from the latest {latest_version}")
+        print(f"WARNING: Installed version {installed_version} "
+              f"differs in patch version from the latest {latest_version}")
         sys.exit(1)
     elif result == 'CRITICAL':
-        print(f"CRITICAL: Installed version {installed_version} is significantly out of date compared to the latest {latest_version}")
+        print(f"CRITICAL: Installed version {installed_version} is "
+              f"significantly out of date compared to the latest {latest_version}")
         sys.exit(2)
     else:  # UNKNOWN
         print(f"UNKNOWN: Error encountered - {installed_version}")
