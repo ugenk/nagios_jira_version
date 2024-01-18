@@ -25,6 +25,7 @@ apply Service "check_jira_version" {
   import "generic-service"
   check_command = "check_jira_version"
   assign where host.vars.jira_host
+  check_interval = 1d
 }
 
 object Host "jira.example.com" {
